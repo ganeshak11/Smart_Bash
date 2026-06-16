@@ -217,6 +217,30 @@ alias gb='git branch -a'
 alias gst='git stash'
 alias gstp='git stash pop'
 
+# autopush: stage everything, commit with a timestamp, and push
+# Usage: autopush            → uses "auto: YYYY-MM-DD HH:MM:SS"
+#        autopush "my note"  → uses "auto: my note — YYYY-MM-DD HH:MM:SS"
+autopush() {
+    local timestamp; timestamp=$(date "+%Y-%m-%d %H:%M:%S")
+    local msg
+    if [ -n "$1" ]; then
+        msg="auto: $* — $timestamp"
+    else
+        msg="auto: $timestamp"
+    fi
+
+    if ! git rev-parse --is-inside-work-tree &>/dev/null; then
+        echo -e "\e[1;31m❌ Not inside a git repository.\e[0m"
+        return 1
+    fi
+
+    git add . && \
+    git commit -m "$msg" && \
+    git push && \
+    echo -e "\e[1;32m✅ Pushed: \"$msg\"\e[0m" || \
+    echo -e "\e[1;31m❌ autopush failed. Check git status.\e[0m"
+}
+
 # Project Navigation — update these to your own project paths
 # alias myproject='cd ~/dev/my-project'
 
