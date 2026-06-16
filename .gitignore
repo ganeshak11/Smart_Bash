@@ -1,0 +1,7 @@
+# OS & editor junk
+.DS_Store
+.bashrc.new
+*.swp
+*.swo
+# Never commit secrets!
+.secrets

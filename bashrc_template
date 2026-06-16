@@ -1,0 +1,436 @@
+# ~/.bashrc — Smart Bash Config
+# Installed by Smart Bash: https://github.com/YOUR_USERNAME/Smart_Bash
+# see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
+
+# If not running interactively, don't do anything
+case $- in
+    *i*) ;;
+      *) return;;
+esac
+
+# ── Environment Variables & Paths ─────────────────────────────────────────────
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+export PATH="$HOME/.local/bin:$PATH"
+export NVM_DIR="$HOME/.nvm"
+
+# Load secrets securely (API keys live in ~/.secrets, never in ~/.bashrc)
+if [ -f "$HOME/.secrets" ]; then
+    source "$HOME/.secrets"
+fi
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── Shell Options & History ───────────────────────────────────────────────────
+shopt -s checkwinsize
+shopt -s globstar
+
+HISTSIZE=10000
+HISTFILESIZE=20000
+HISTTIMEFORMAT="%d/%m %T "
+HISTCONTROL=ignoreboth:erasedups
+shopt -s histappend
+# Sync history across all zellij/tmux panes in real time
+PROMPT_COMMAND="history -a; history -n${PROMPT_COMMAND:+; $PROMPT_COMMAND}"
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── Visuals & Prompt ──────────────────────────────────────────────────────────
+if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
+    debian_chroot=$(cat /etc/debian_chroot)
+fi
+
+case "$TERM" in
+    xterm-color|*-256color) color_prompt=yes;;
+esac
+
+if [ -n "$force_color_prompt" ]; then
+    if [ -x /usr/bin/tput ] && tput setaf 1 >&/dev/null; then
+        color_prompt=yes
+    else
+        color_prompt=
+    fi
+fi
+
+# Detect context: SSH, Docker, VM, root
+_DETECT_ENVIRONMENT() {
+    local env_icon="" env_name="LOCAL"
+    if [[ $EUID -eq 0 ]]; then
+        env_icon="🔒"; env_name="ROOT"
+    elif [ -n "$SSH_CONNECTION" ] || [ -n "$SSH_CLIENT" ]; then
+        env_icon="📡"; env_name="SSH"
+    elif [ -f /.dockerenv ]; then
+        env_icon="🐳"; env_name="DOCKER"
+    elif grep -qi "VirtualBox\|VMware\|KVM\|Hyper-V\|QEMU" /sys/class/dmi/id/sys_vendor 2>/dev/null; then
+        env_icon="💾"; env_name="VM"
+    fi
+    echo -ne "${env_icon}:${env_name}"
+}
+
+_GET_ENV_COLOR() {
+    if [[ $EUID -eq 0 ]]; then
+        echo -ne "\e[1;31m"
+    elif [ -n "$SSH_CONNECTION" ] || [ -n "$SSH_CLIENT" ]; then
+        echo -ne "\e[38;5;51m"
+    elif [ -f /.dockerenv ]; then
+        echo -ne "\e[38;5;33m"
+    elif grep -qi "VirtualBox\|VMware\|KVM\|Hyper-V\|QEMU" /sys/class/dmi/id/sys_vendor 2>/dev/null; then
+        echo -ne "\e[38;5;208m"
+    else
+        echo -ne "\e[38;5;213m"
+    fi
+}
+
+if [ "$color_prompt" = yes ]; then
+    PS1='$(EXIT=$?; if [ $EXIT -eq 0 ]; then echo "\[\e[1;32m\]● "; else echo "\[\e[1;31m\]● "; fi)\[$(_GET_ENV_COLOR)\]\u\[\e[0m\] \[\e[38;5;81m\]\w\[\e[38;5;214m\]$(__git_ps1 " (%s)")\[\e[38;5;245m\] [$(_DETECT_ENVIRONMENT)]\[\e[0m\]\n\[$(_GET_ENV_COLOR)\]❯\[\e[38;5;81m\]❯\[\e[38;5;214m\]❯\[\e[0m\] '
+else
+    PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
+fi
+unset color_prompt force_color_prompt
+
+case "$TERM" in
+xterm*|rxvt*)
+    PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
+    ;;
+esac
+
+if [ -x /usr/bin/dircolors ]; then
+    test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+    alias grep='grep --color=auto'
+    alias fgrep='fgrep --color=auto'
+    alias egrep='egrep --color=auto'
+fi
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── Autocompletions & Integrations ────────────────────────────────────────────
+[ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
+
+if ! shopt -oq posix; then
+  if [ -f /usr/share/bash-completion/bash_completion ]; then
+    . /usr/share/bash-completion/bash_completion
+  elif [ -f /etc/bash_completion ]; then
+    . /etc/bash_completion
+  fi
+fi
+
+# Cargo
+if [ -f "$HOME/.cargo/env" ]; then
+    . "$HOME/.cargo/env"
+fi
+
+# SSH agent
+if [ -z "$SSH_AUTH_SOCK" ]; then
+    eval "$(ssh-agent -s)" &>/dev/null
+    ssh-add ~/.ssh/id_ed25519 2>/dev/null
+fi
+
+# zoxide: smart cd
+if command -v zoxide &>/dev/null; then
+    eval "$(zoxide init bash)"
+fi
+
+# fzf: fuzzy finder (Ctrl+R history, Ctrl+T files, Alt+C dirs)
+if [ -f /usr/share/doc/fzf/examples/key-bindings.bash ]; then
+    source /usr/share/doc/fzf/examples/key-bindings.bash
+fi
+if [ -f /usr/share/bash-completion/completions/fzf ]; then
+    source /usr/share/bash-completion/completions/fzf
+fi
+export FZF_DEFAULT_OPTS="
+  --height 40% --border rounded --layout=reverse --info=inline
+  --color=fg:#f8f8f2,bg:#282a36,hl:#bd93f9
+  --color=fg+:#f8f8f2,bg+:#44475a,hl+:#bd93f9
+  --color=info:#ffb86c,prompt:#50fa7b,pointer:#ff79c6
+  --color=marker:#ff79c6,spinner:#ffb86c,header:#6272a4"
+if command -v rg &>/dev/null; then
+    export FZF_DEFAULT_COMMAND='rg --files --hidden --follow --glob "!.git"'
+fi
+
+# Kali-style command-not-found auto-installer
+command_not_found_handle() {
+    local cmd="$1"
+    if [ -x /usr/lib/command-not-found ]; then
+        local suggestion; suggestion=$(/usr/lib/command-not-found "$cmd" 2>&1)
+        local pkg; pkg=$(echo "$suggestion" | grep -oP 'apt install \K\S+' | head -1)
+        if [ -n "$pkg" ]; then
+            echo -e "\n\e[1;33m⚠️  Command '\e[1;37m$cmd\e[1;33m' not found.\e[0m"
+            echo -e "\e[1;36m📦 Available as package: \e[1;32m$pkg\e[0m\n"
+            read -r -p $'\e[1;35m❯ Install now? [y/N]: \e[0m' answer
+            if [[ "$answer" =~ ^[Yy]$ ]]; then
+                echo ""
+                sudo apt-get install -y "$pkg"
+            else
+                echo -e "\e[1;31m✖ Cancelled.\e[0m"; return 127
+            fi
+        else
+            echo -e "\e[1;31m❌ '$cmd': command not found\e[0m"; return 127
+        fi
+    else
+        echo -e "\e[1;31m❌ '$cmd': command not found\e[0m"; return 127
+    fi
+}
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── Aliases ───────────────────────────────────────────────────────────────────
+if [ -f ~/.bash_aliases ]; then
+    . ~/.bash_aliases
+fi
+
+# Core Utils
+alias cp='cp -i'
+alias mv='mv -i'
+alias reload='clear && source ~/.bashrc'
+alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
+
+# lsd
+alias ls='lsd'
+alias ll='lsd -alF'
+alias la='lsd -A'
+alias l='lsd -CF'
+alias lt='lsd --tree'
+
+# bat: syntax-highlighted cat
+if command -v batcat &>/dev/null; then
+    alias cat='batcat --paging=never --theme="Dracula"'
+    alias bat='batcat --theme="Dracula"'
+    alias ccat='/usr/bin/cat'
+    alias batdiff='batcat --diff'
+    export MANPAGER="sh -c 'col -bx | batcat -l man -p --theme=\"Dracula\"'"
+elif command -v bat &>/dev/null; then
+    alias cat='bat --paging=never --theme="Dracula"'
+    alias ccat='/usr/bin/cat'
+    export MANPAGER="sh -c 'col -bx | bat -l man -p --theme=\"Dracula\"'"
+fi
+
+# ripgrep
+alias rgh='rg --hidden'
+alias rgi='rg -i'
+
+# Dev & Git
+alias gs='git status'
+alias ga='git add .'
+alias gc='git commit -m'
+alias gp='git push'
+alias gpl='git pull'
+alias gd='git diff'
+alias gl='git log --oneline --graph --decorate --all'
+alias gco='git checkout'
+alias gb='git branch -a'
+alias gst='git stash'
+alias gstp='git stash pop'
+
+# Project Navigation — update these to your own project paths
+# alias myproject='cd ~/dev/my-project'
+
+# Media & Applications
+alias brave='brave-browser > /dev/null 2>&1 &'
+alias music='audacious > /dev/null 2>&1 &'
+
+# TUI & Aesthetics
+alias zj='zellij'
+alias hack='zellij --layout ~/.config/zellij/layouts/hacker.kdl'
+alias matrix='cmatrix -C cyan'
+alias neo='btop'
+alias lg='lazygit'
+alias v='vim'
+alias nv='nvim'
+alias r='ranger'
+
+# Sentinel Ops Shortcuts (Smart_Bash scripts)
+alias cheat='bat ~/Smart_Bash/KEYBOARD_SENTINEL.md'
+alias cheats='~/Smart_Bash/cheat.sh'
+alias sgit='~/Smart_Bash/sgit.sh'
+alias ask='~/Smart_Bash/ask.sh'
+alias netops='~/Smart_Bash/netops.sh'
+alias zgen='~/Smart_Bash/zgen.sh'
+alias slog='~/Smart_Bash/slog.sh'
+alias syncenv='~/Smart_Bash/sync_env.sh'
+alias menu='smart_menu_run'
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── Functions ─────────────────────────────────────────────────────────────────
+# mkdir: auto-cd into the created directory
+mkdir() {
+    command mkdir -p "$@" && builtin cd "${@: -1}" && echo "📁 Created and entered: $(pwd)"
+}
+mkcd() { mkdir "$1"; }
+
+# cdf: Interactive dir picker
+cdf() {
+    local dirs=(*)
+    select dir in "${dirs[@]}"; do
+        [ -n "$dir" ] && builtin cd "$dir"; break
+    done
+}
+
+# y: Yazi file manager with cwd support
+function y() {
+    local tmp="$(mktemp -t "yazi-cwd.XXXXXX")"
+    yazi "$@" --cwd-file="$tmp"
+    if cwd="$(command cat -- "$tmp")" && [ -n "$cwd" ] && [ "$cwd" != "$PWD" ]; then
+        builtin cd -- "$cwd"
+    fi
+    rm -f -- "$tmp"
+}
+
+# ld: Numbered directory list with lsd icons
+# Usage: ld         → list with numbers
+#        ld -a      → include hidden files
+#        ld -l      → detailed view
+#        ld -la     → detailed + hidden
+ld() {
+    local show_hidden=false show_details=false
+    for arg in "$@"; do
+        case "$arg" in
+            -*)
+                [[ "$arg" == *a* ]] && show_hidden=true
+                [[ "$arg" == *l* ]] && show_details=true
+                ;;
+        esac
+    done
+
+    local dotglob_status=$(shopt -p dotglob)
+    local nullglob_status=$(shopt -p nullglob)
+    [ "$show_hidden" = true ] && shopt -s dotglob
+    shopt -s nullglob
+
+    local dirs=(*/) all_files=(*)
+    eval "$dotglob_status"; eval "$nullglob_status"
+
+    local pure_files=()
+    for f in "${all_files[@]}"; do [[ ! -d "$f" ]] && pure_files+=("$f"); done
+    export __LD_DIRS=("${dirs[@]}")
+
+    [ ${#all_files[@]} -eq 0 ] && { echo "Directory is empty."; return; }
+
+    if [ ${#dirs[@]} -gt 0 ]; then
+        if [ "$show_details" = true ] && command -v lsd &>/dev/null; then
+            lsd -ld --color=always --icon=always "${dirs[@]}" 2>/dev/null | awk '{printf "\033[1;36m%3d\033[0m %s\n", NR, $0}'
+        elif command -v lsd &>/dev/null; then
+            lsd -1d --color=always --icon=always "${dirs[@]}" 2>/dev/null | awk '{printf "\033[1;36m%3d\033[0m %s\n", NR, $0}'
+        else
+            local i=1
+            for d in "${dirs[@]}"; do printf "\e[1;36m%3d\e[0m \e[1;34m%s\e[0m\n" "$i" "$d"; ((i++)); done
+        fi
+    fi
+
+    if [ ${#pure_files[@]} -gt 0 ]; then
+        if [ "$show_details" = true ] && command -v lsd &>/dev/null; then
+            lsd -ld --color=always --icon=always "${pure_files[@]}" 2>/dev/null | awk '{print "    " $0}'
+        elif command -v lsd &>/dev/null; then
+            lsd -1d --color=always --icon=always "${pure_files[@]}" 2>/dev/null | awk '{print "    " $0}'
+        else
+            for f in "${pure_files[@]}"; do printf "    %s\n" "$f"; done
+        fi
+    fi
+}
+
+# cd: Numbered jump (use after ld) + auto-create missing directories
+cd() {
+    if [[ "$1" =~ ^[0-9]+$ ]] && [[ ! -d "$1" ]]; then
+        [ ${#__LD_DIRS[@]} -eq 0 ] && { echo -e "\e[1;31m❌ No directories cached. Run 'ld' first.\e[0m"; return 1; }
+        { [ "$1" -gt ${#__LD_DIRS[@]} ] || [ "$1" -lt 1 ]; } && { echo -e "\e[1;31m❌ Invalid number: $1\e[0m"; return 1; }
+        builtin cd "${__LD_DIRS[$(( $1 - 1 ))]}" && lsd; return
+    fi
+    if [ -d "$1" ] || [ -z "$1" ] || [[ "$1" =~ ^- ]]; then
+        builtin cd "$@" && lsd
+    else
+        if [[ $- == *i* ]]; then
+            echo -e "\e[1;33m⚠️  Directory '$1' does not exist.\e[0m"
+            read -r -p $'\e[1;35m❯ Create it now? [y/N]: \e[0m' answer
+            [[ "$answer" =~ ^[Yy]$ ]] && command mkdir -p "$1" && builtin cd "$1" && lsd || return 1
+        else
+            builtin cd "$@"
+        fi
+    fi
+}
+
+# extract: universal archive extractor
+extract() {
+    if [ -f "$1" ]; then
+        case "$1" in
+            *.tar.bz2) tar xjf "$1" ;; *.tar.gz)  tar xzf "$1" ;; *.tar.xz)  tar xJf "$1" ;;
+            *.bz2)     bunzip2 "$1"  ;; *.rar)     unrar x "$1" ;; *.gz)      gunzip "$1"   ;;
+            *.tar)     tar xf "$1"   ;; *.tbz2)    tar xjf "$1" ;; *.tgz)     tar xzf "$1"  ;;
+            *.zip)     unzip "$1"    ;; *.Z)        uncompress "$1" ;; *.7z) 7z x "$1"       ;;
+            *) echo "❌ Don't know how to extract '$1'" ;;
+        esac
+        echo "✅ Extracted: $1"
+    else
+        echo "❌ '$1' is not a valid file"
+    fi
+}
+
+# weather: show current weather for a city
+weather() {
+    curl -s "wttr.in/${1:-}?format=3" 2>/dev/null || echo "🌐 No internet connection"
+}
+
+# System Info
+alias myip='curl -s https://api.ipify.org && echo ""'
+alias ports='ss -tulnp | grep LISTEN'
+
+pid() {
+    local result; result=$(fuser "${1}/tcp" 2>/dev/null)
+    [ -n "$result" ] && echo "🔍 Port $1 → PID: $result" || echo "❌ Nothing is running on port $1"
+}
+
+killport() {
+    [ -z "$1" ] && { echo -e "\e[1;31m❌ Specify a port (e.g., killport 3000)\e[0m"; return 1; }
+    local pid; pid=$(lsof -t -i:"$1" 2>/dev/null)
+    [ -z "$pid" ] && { echo -e "\e[1;33m⚠️  No process on port $1.\e[0m"; return 1; }
+    local proc_name; proc_name=$(ps -p "$pid" -o comm= 2>/dev/null)
+    echo -e "\e[1;36m🔍 '\e[1;32m$proc_name\e[1;36m' (PID: $pid) is on port $1.\e[0m"
+    read -r -p $'\e[1;35m❯ Kill it? [y/N]: \e[0m' answer
+    [[ "$answer" =~ ^[Yy]$ ]] && kill -9 "$pid" && echo -e "\e[1;32m✅ Killed.\e[0m" || echo -e "\e[1;31m✖ Cancelled.\e[0m"
+}
+
+countdown() {
+    local total="${1:-10}" i
+    for (( i=total; i>=0; i-- )); do
+        local pct=$(( i * 100 / total ))
+        local color; (( pct > 50 )) && color="\e[1;32m" || { (( pct > 25 )) && color="\e[1;33m" || color="\e[1;31m"; }
+        local filled=$(( (total - i) * 20 / total )) empty=$(( 20 - filled ))
+        local bar; bar=$(printf '%.0s█' $(seq 1 $filled) 2>/dev/null); bar+=$(printf '%.0s░' $(seq 1 $empty) 2>/dev/null)
+        printf "\r${color}⏱  [${bar}] %3ds remaining\e[0m" "$i"; sleep 1
+    done
+    printf "\r\e[1;32m✅  Done!%-30s\e[0m\n" " "; printf "\a"
+}
+
+unalias scan 2>/dev/null
+scan() {
+    ! command -v nmap &>/dev/null && { echo -e "\e[1;31m❌ nmap not installed.\e[0m"; return 1; }
+    local route_info; route_info=$(ip route get 8.8.8.8 2>/dev/null)
+    [ -z "$route_info" ] && { echo -e "\e[1;31m❌ No active routing interface.\e[0m"; return 1; }
+    local interface; interface=$(echo "$route_info" | awk '{print $5}')
+    local subnet; subnet=$(ip addr show "$interface" | grep -w inet | awk '{print $2}')
+    echo -e "\e[1;36m🔍 Scanning $subnet on $interface...\e[0m"
+    nmap -sP "$subnet"
+}
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── Lazy Loaders ──────────────────────────────────────────────────────────────
+nvm()  { unset -f nvm node npm npx; [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"; [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"; nvm  "$@"; }
+node() { unset -f nvm node npm npx; [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"; [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"; node "$@"; }
+npm()  { unset -f nvm node npm npx; [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"; [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"; npm  "$@"; }
+npx()  { unset -f nvm node npm npx; [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"; [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"; npx  "$@"; }
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── Startup Scripts & Integrations ────────────────────────────────────────────
+# Smart Docker Manager
+[ -f "$HOME/Smart_Bash/dops.sh" ] && source "$HOME/Smart_Bash/dops.sh"
+
+# Terminal banner
+if [[ -z "$VSCODE_INJECTION" ]] && [[ -z "$TERM_PROGRAM" ]] && [[ "$(ps -p $PPID -o comm= 2>/dev/null)" != "yakuake" ]] && [[ $- == *i* ]]; then
+    export myip=$(curl -s https://api.ipify.org 2>/dev/null || echo "N/A")
+    [ -f "$HOME/Smart_Bash/terminal_banner_v2.sh" ] && source "$HOME/Smart_Bash/terminal_banner_v2.sh"
+fi
+
+# Smart Menu
+smart_menu_run() {
+    source ~/Smart_Bash/smart_menu.sh
+    source ~/Smart_Bash/launch.sh
+}
+if [[ -z "$ZELLIJ" ]] && [[ -z "$VSCODE_INJECTION" ]] && [[ -z "$TERM_PROGRAM" ]] \
+    && [[ "$(ps -p $PPID -o comm= 2>/dev/null)" != "yakuake" ]] && [[ $- == *i* ]]; then
+    smart_menu_run
+fi
+# ──────────────────────────────────────────────────────────────────────────────
