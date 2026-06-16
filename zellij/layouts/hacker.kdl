@@ -1,0 +1,40 @@
+layout {
+    default_tab_template {
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar"
+        }
+        children
+        pane size=1 borderless=true {
+            plugin location="zellij:status-bar"
+        }
+    }
+
+    tab name="GANESH@DEVOPS" {
+        pane split_direction="vertical" {
+            // Left side - main terminal (expanded from 60% → 70%)
+            pane size="60%" {
+                pane split_direction="horizontal" {
+                    pane size="75%" {
+                        focus true
+                    }
+                    pane size="25%" {
+                        command "htop"
+                    }
+                }
+            }
+            // Right side - monitoring (shrunk from 40% → 30%)
+            pane size="40%" {
+                pane split_direction="horizontal" {
+                    pane size="50%" {
+                        command "bash"
+                        args "-c" "cmatrix -C cyan"
+                    }
+                    pane size="50%" {
+                        command "bash"
+                        args "-c" "while true; do clear; echo -e '\\e[1;36m━━━ SYSTEM STATUS ━━━\\e[0m'; echo ''; uptime; echo ''; free -h; echo ''; df -h / | tail -1; echo ''; echo -e '\\e[1;32m━━━ NETWORK ━━━\\e[0m'; echo ''; ss -tuln | grep LISTEN | head -5; sleep 5; done"
+                    }
+                }
+            }
+        }
+    }
+}

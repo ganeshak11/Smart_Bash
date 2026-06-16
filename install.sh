@@ -120,6 +120,16 @@ install_config() {
     # Make all scripts executable
     chmod +x "$HOME/Smart_Bash"/*.sh 2>/dev/null || true
     success "Scripts marked as executable"
+
+    # Install zellij hacker layout
+    if command -v zellij &>/dev/null; then
+        mkdir -p "$HOME/.config/zellij/layouts"
+        cp "$SMART_BASH_DIR/zellij/layouts/hacker.kdl" "$HOME/.config/zellij/layouts/hacker.kdl"
+        success "Zellij hacker layout installed (~/.config/zellij/layouts/hacker.kdl)"
+        info "Launch it with: hack"
+    else
+        warning "zellij not found — skipping layout install. Install zellij first, then re-run this script."
+    fi
 }
 
 # ── Final instructions ────────────────────────────────────────────────────────

@@ -147,6 +147,21 @@ The installer handles all of these automatically. For reference:
 
 ---
 
+## 🪟 Zellij Layout — Hacker Mode
+
+Included in the repo and auto-installed to `~/.config/zellij/layouts/hacker.kdl`.
+
+Launch it any time with:
+```bash
+hack
+```
+
+The layout gives you:
+- **Left (60%)** — Main terminal on top, `htop` on the bottom
+- **Right (40%)** — `cmatrix` rain on top, live system status (uptime, memory, disk, network) cycling every 5 seconds on the bottom
+
+---
+
 ## ↩️ Uninstall / Restore
 
 Your old `~/.bashrc` is automatically backed up before installation:
