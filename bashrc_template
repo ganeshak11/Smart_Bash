@@ -230,7 +230,7 @@ autopush() {
     fi
 
     if ! git rev-parse --is-inside-work-tree &>/dev/null; then
-        echo -e "\e[1;31m❌ Not inside a git repository.\e[0m"
+        echo -e "\e[1;31m❌ Not inside a git repository. To enter type ${BOLD}'cd ~/Smart_Bash' and run again\e[0m"
         return 1
     fi
 
