@@ -106,6 +106,7 @@ case "$SMART_MENU_ACTION" in
 
     browse)
         clear
+        export SMART_MENU_SHOW_STATS=1
         echo -e "\e[1;36m🌐 Opening Brave & launching Hacker mode...\e[0m"
         export SMART_MENU_ACTION=""  # Reset BEFORE spawning Brave/Zellij so child shells don't re-trigger
 
@@ -130,6 +131,7 @@ case "$SMART_MENU_ACTION" in
 
     project)
         clear
+        export SMART_MENU_SHOW_STATS=0
         local_session_name=$(basename "$SMART_MENU_PROJECT_DIR" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
         echo -e "\e[1;32m🚀 Launching: \e[1;37m$(basename "$SMART_MENU_PROJECT_DIR")\e[0m"
         echo -e "\e[2m   Layout  : $SMART_MENU_LAYOUT\e[0m"
@@ -187,6 +189,7 @@ case "$SMART_MENU_ACTION" in
 
     zellij)
         clear
+        export SMART_MENU_SHOW_STATS=1
         echo -e "\e[1;35m⚡ Launching Zellij...\e[0m"
         export SMART_MENU_ACTION=""  # Reset BEFORE spawning Zellij so child shells don't re-trigger
         sleep 0.2
@@ -199,7 +202,8 @@ case "$SMART_MENU_ACTION" in
 
     bash)
         clear
-        echo -e "\e[1;33m🐚 Dropping to bash. Have fun, Boss.\e[0m"
+        export SMART_MENU_SHOW_STATS=0
+        source "$HOME/Smart_Bash/terminal_banner_v2.sh"
         ;;
 
     ssh)

@@ -47,7 +47,7 @@ draw_menu() {
     shift 2
     local options=("$@")
 
-    echo -e "${BOLD_MAGENTA}HI Boss, What are you doing today?${RESET}${CLEAR_LINE}"
+    echo -e "${BOLD_MAGENTA}Welcome back, Boss! What do you want to do?${RESET}${CLEAR_LINE}"
     echo -e "${DIM}${CYAN}$title${RESET}${CLEAR_LINE}"
     echo -e "${CLEAR_LINE}"
 

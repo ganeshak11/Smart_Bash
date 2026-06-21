@@ -145,6 +145,94 @@ _CHECK_ALERTS() {
     fi
 }
 
+# ─── Stats-only view (no ASCII art) — used by Zellij / Browse ────────────────
+_show_stats_only() {
+    local TERM_ROWS_LOCAL
+    TERM_ROWS_LOCAL=$(tput lines 2>/dev/null || echo 24)
+
+    echo ""
+    if [ "$TERM_ROWS_LOCAL" -ge 22 ]; then
+        echo -e "  ${BOLD_YELLOW}💭  ${RANDOM_QUOTE}${RESET}"
+        echo ""
+
+        ENV_INFO=$(_DETECT_ENV_BANNER)
+        echo -e "${BOLD_MAGENTA}[Environment]${RESET} ${BOLD_WHITE}${ENV_INFO}${RESET}"
+        echo ""
+
+        echo -e "${BOLD_CYAN}┌─[ SYSTEM STATUS ]${RESET}"
+        echo -e "${CYAN}│${RESET}"
+
+        echo -e "${CYAN}├─${RESET} ${WHITE}📅  $(date '+%A, %B %d %Y')   🕐  $(date '+%I:%M %p')${RESET}"
+
+        local UPTIME
+        UPTIME=$(uptime -p 2>/dev/null || uptime | awk -F'( |,|:)+' '{print $6"h "$7"m"}')
+        echo -e "${CYAN}├─${RESET} ${BOLD_GREEN}⏱️ Uptime: ${UPTIME}${RESET}"
+
+        local OS
+        OS=$(grep PRETTY_NAME /etc/os-release 2>/dev/null | cut -d= -f2 | tr -d '"')
+        echo -e "${CYAN}├─${RESET} ${CYAN}💻  OS: ${OS}${RESET}"
+
+        local WEATHER
+        WEATHER=$(curl -s --max-time 1 "wttr.in/?format=3" 2>/dev/null)
+        if [ -n "$WEATHER" ] && [[ ! "$WEATHER" =~ "Unknown" ]]; then
+            echo -e "${CYAN}├─${RESET} ${CYAN}⛅  Weather: ${WEATHER}${RESET}"
+        fi
+
+        echo -e "${CYAN}├─${RESET} ${CYAN}🔧  Kernel: $(uname -r)${RESET}"
+        echo -e "${CYAN}├─${RESET} ${CYAN}🐚  Shell: $SHELL${RESET}"
+        echo -e "${CYAN}├─${RESET} ${CYAN}🌐  IP: ${myip}${RESET}"
+
+        local MEM_USED MEM_TOTAL MEM_PERCENT MEM_BAR MEM_EMPTY
+        MEM_USED=$(free -h | awk '/^Mem:/ {print $3}')
+        MEM_TOTAL=$(free -h | awk '/^Mem:/ {print $2}')
+        MEM_PERCENT=$(free | awk '/^Mem:/ {printf "%.0f", $3/$2 * 100}')
+        MEM_BAR=$(printf '█%.0s' $(seq 1 $((MEM_PERCENT/5))) 2>/dev/null)
+        MEM_EMPTY=$(printf '░%.0s' $(seq 1 $((20-MEM_PERCENT/5))) 2>/dev/null)
+        echo -e "${CYAN}├─${RESET} ${CYAN}🧠  Memory: ${MEM_USED} / ${MEM_TOTAL} ${BOLD_GREEN}[${MEM_BAR}${MEM_EMPTY}] ${MEM_PERCENT}%${RESET}"
+
+        local DISK_PERCENT DISK_USED DISK_TOTAL DISK_BAR DISK_EMPTY DISK_COLOR
+        DISK_PERCENT=$(df -h / | awk 'NR==2 {print $5}' | tr -d '%')
+        DISK_USED=$(df -h / | awk 'NR==2 {print $3}')
+        DISK_TOTAL=$(df -h / | awk 'NR==2 {print $2}')
+        DISK_BAR=$(printf '█%.0s' $(seq 1 $((DISK_PERCENT/5))) 2>/dev/null)
+        DISK_EMPTY=$(printf '░%.0s' $(seq 1 $((20-DISK_PERCENT/5))) 2>/dev/null)
+        if [ "$DISK_PERCENT" -gt 80 ]; then DISK_COLOR="${BOLD_YELLOW}"; else DISK_COLOR="${BOLD_GREEN}"; fi
+        echo -e "${CYAN}├─${RESET} ${CYAN}💾  Disk: ${DISK_USED} / ${DISK_TOTAL} ${DISK_COLOR}[${DISK_BAR}${DISK_EMPTY}] ${DISK_PERCENT}%${RESET}"
+
+        local CPU_LOAD
+        CPU_LOAD=$(uptime | awk -F'load average:' '{print $2}' | awk '{print $1}' | tr -d ',')
+        echo -e "${CYAN}├─${RESET} ${CYAN}⚡  CPU Load: ${CPU_LOAD}${RESET}"
+
+        echo -e "${CYAN}├─${RESET} ${CYAN}👤  User: $(whoami)@$(hostname)${RESET}"
+        echo -e "${CYAN}├─${RESET} ${CYAN}🔄  Processes: $(ps aux | wc -l)${RESET}"
+
+        if command -v docker &>/dev/null && docker info &>/dev/null; then
+            local DOCKER_RUNNING DOCKER_TOTAL DOCKER_STOPPED
+            DOCKER_RUNNING=$(docker ps -q | wc -l)
+            DOCKER_TOTAL=$(docker ps -a -q | wc -l)
+            DOCKER_STOPPED=$((DOCKER_TOTAL - DOCKER_RUNNING))
+            echo -e "${CYAN}├─${RESET} ${CYAN}🐳  Docker: ${BOLD_GREEN}${DOCKER_RUNNING} Running${RESET} | ${DIM}${DOCKER_STOPPED} Stopped${RESET}"
+        fi
+
+        echo -e "${CYAN}│${RESET}"
+        _CHECK_ALERTS
+        echo -e "${BOLD_CYAN}└─────────────────────────────────────────────────────────${RESET}"
+        echo ""
+    else
+        local MEM_PERCENT DISK_PERCENT CPU_LOAD ENV_INFO
+        MEM_PERCENT=$(free | awk '/^Mem:/ {printf "%.0f", $3/$2 * 100}')
+        DISK_PERCENT=$(df -h / | awk 'NR==2 {print $5}' | tr -d '%')
+        CPU_LOAD=$(uptime | awk -F'load average:' '{print $2}' | awk '{print $1}' | tr -d ',')
+        ENV_INFO=$(_DETECT_ENV_BANNER)
+        echo -e "  ${BOLD_YELLOW}💭  ${RANDOM_QUOTE}${RESET}"
+        echo -e "${BOLD_MAGENTA}[$ENV_INFO]${RESET} ${CYAN}🧠 Mem: ${MEM_PERCENT}%${RESET} | ${CYAN}💾 Disk: ${DISK_PERCENT}%${RESET} | ${CYAN}⚡ CPU: ${CPU_LOAD}${RESET} | ${CYAN}🌐 IP: ${myip}${RESET}"
+        echo ""
+    fi
+}
+
+# ─── Main auto-run block (skipped when TERMINAL_BANNER_FUNCTIONS_ONLY=1) ───────
+if [[ "${TERMINAL_BANNER_FUNCTIONS_ONLY:-0}" != "1" ]]; then
+
 # 1. Print Header
 if [ "$TERM_ROWS" -ge 30 ]; then
     # Full ASCII art banner
@@ -294,3 +382,5 @@ else
     echo -e "${BOLD_MAGENTA}[$ENV_INFO]${RESET} ${CYAN}🧠 Mem: ${MEM_PERCENT}%${RESET} | ${CYAN}💾 Disk: ${DISK_PERCENT}%${RESET} | ${CYAN}⚡ CPU: ${CPU_LOAD}${RESET} | ${CYAN}🌐 IP: ${myip}${RESET}"
     echo ""
 fi
+
+fi # end TERMINAL_BANNER_FUNCTIONS_ONLY guard
