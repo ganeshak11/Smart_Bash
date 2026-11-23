@@ -1,67 +1,56 @@
 #!/bin/bash
 
+# shellcheck disable=SC1091
+source "$(builtin cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
 # ─── Smart Menu Configuration ────────────────────────────────────────────────
-CONFIG_FILE="$HOME/.smart_menu.conf"
-if [[ ! -f "$CONFIG_FILE" ]]; then
-    cat << 'EOF' > "$CONFIG_FILE"
+_SM_CONFIG_FILE="$HOME/.smart_menu.conf"
+if [[ ! -f "$_SM_CONFIG_FILE" ]]; then
+    cat << 'EOF' > "$_SM_CONFIG_FILE"
 # Smart Menu Configuration
-SMART_MENU_DEV_DIRS=("$HOME/dev" "$HOME/dev/HACKHAZARD" "$HOME/dev/Decvb")
-SMART_MENU_EDITORS=("VS Code:code" "Cursor:cursor" "Antigravity:antigravity" "None (Just cd to dir):none")
+# Normally written by install.sh — this is only the fallback if it's missing.
+SMART_MENU_DEV_DIRS=("$HOME/dev")
+SMART_MENU_EDITORS=("VS Code:code" "Cursor:cursor" "Neovim:nvim" "None (Just cd to dir):none")
 EOF
 fi
-source "$CONFIG_FILE"
+source "$_SM_CONFIG_FILE"
 
 # ─── Known projects → layout mapping ─────────────────────────────────────────
 # Key: lowercase folder name  Value: layout filename (no .kdl)
-declare -A KNOWN_PROJECT_LAYOUTS=(
+declare -A _SM_KNOWN_LAYOUTS=(
     ["fortis-ci"]="fortis-ci"
     ["cicd-sentinel"]="cicd-sentinel"
 )
 
 # ─── Colors ───────────────────────────────────────────────────────────────────
-DIM='\e[2m'
-CYAN='\e[36m'
-BOLD_CYAN='\e[1;36m'
-YELLOW='\e[33m'
-BOLD_YELLOW='\e[1;33m'
-GREEN='\e[32m'
-BOLD_GREEN='\e[1;32m'
-MAGENTA='\e[35m'
-BOLD_MAGENTA='\e[1;35m'
-WHITE='\e[37m'
-BOLD_WHITE='\e[1;37m'
-RED='\e[31m'
-BOLD_RED='\e[1;31m'
-RESET='\e[0m'
-CLEAR_LINE='\e[K'
 
 # ─── Cursor helpers ───────────────────────────────────────────────────────────
-cursor_up() {
-    tput cuu $1 2>/dev/null || echo -ne "\e[${1}A"
+_sm_cursor_up() {
+    tput cuu "$1" 2>/dev/null || echo -ne "\e[${1}A"
 }
 
-# ─── draw_menu ────────────────────────────────────────────────────────────────
-draw_menu() {
+# ─── _sm_draw_menu ────────────────────────────────────────────────────────────────
+_sm_draw_menu() {
     local title="$1"
     local selected="$2"
     shift 2
     local options=("$@")
 
-    echo -e "${BOLD_MAGENTA}Welcome back, Boss! What do you want to do?${RESET}${CLEAR_LINE}"
-    echo -e "${DIM}${CYAN}$title${RESET}${CLEAR_LINE}"
-    echo -e "${CLEAR_LINE}"
+    echo -e "${SB_BOLD_MAGENTA}Welcome back, Boss! What do you want to do?${SB_RESET}${SB_CLEAR_LINE}"
+    echo -e "${SB_DIM}${SB_CYAN}$title${SB_RESET}${SB_CLEAR_LINE}"
+    echo -e "${SB_CLEAR_LINE}"
 
     for i in "${!options[@]}"; do
         if [[ $i -eq $selected ]]; then
-            echo -e "  ${BOLD_GREEN}❯ ${options[$i]}${RESET}${CLEAR_LINE}"
+            echo -e "  ${SB_BOLD_GREEN}❯ ${options[$i]}${SB_RESET}${SB_CLEAR_LINE}"
         else
-            echo -e "    ${WHITE}${options[$i]}${RESET}${CLEAR_LINE}"
+            echo -e "    ${SB_WHITE}${options[$i]}${SB_RESET}${SB_CLEAR_LINE}"
         fi
     done
 }
 
-# ─── run_menu ─────────────────────────────────────────────────────────────────
-run_menu() {
+# ─── _sm_run_menu ─────────────────────────────────────────────────────────────────
+_sm_run_menu() {
     local title="$1"
     shift
     local options=("$@")
@@ -70,10 +59,10 @@ run_menu() {
     local lines_to_clear=$(( count + 3 ))
 
     for ((i=0; i<lines_to_clear; i++)); do echo ""; done
-    cursor_up $lines_to_clear
+    _sm_cursor_up "$lines_to_clear"
 
     while true; do
-        draw_menu "$title" "$selected" "${options[@]}"
+        _sm_draw_menu "$title" "$selected" "${options[@]}"
 
         read -rsn1 key
         if [[ $key == $'\x1b' ]]; then
@@ -89,7 +78,7 @@ run_menu() {
             break
         fi
 
-        cursor_up $lines_to_clear
+        _sm_cursor_up "$lines_to_clear"
     done
 
     echo ""
@@ -104,20 +93,20 @@ export SMART_MENU_SSH_HOST=""
 export SMART_MENU_LAYOUT=""
 
 # ─── Editor picker ────────────────────────────────────────────────────────────
-editor_picker() {
+_sm_editor_picker() {
     local editor_names=()
     local editor_cmds=()
     for ed in "${SMART_MENU_EDITORS[@]}"; do
         editor_names+=("${ed%%:*}")
         editor_cmds+=("${ed##*:}")
     done
-    run_menu "Open project with which editor?" "${editor_names[@]}"
+    _sm_run_menu "Open project with which editor?" "${editor_names[@]}"
     local ed_choice=$?
     export SMART_MENU_EDITOR="${editor_cmds[$ed_choice]}"
 }
 
 # ─── Project menu ─────────────────────────────────────────────────────────────
-project_menu() {
+_sm_project_menu() {
     local recent_dirs=()
     local find_cmd="find"
     for dir in "${SMART_MENU_DEV_DIRS[@]}"; do
@@ -140,7 +129,7 @@ project_menu() {
 
     options+=("  Search existing project" "+ New Project" "< Back")
 
-    run_menu "Select a project to dive into:" "${options[@]}"
+    _sm_run_menu "Select a project to dive into:" "${options[@]}"
     local choice=$?
 
     local num_recent=${#recent_dirs[@]}
@@ -149,12 +138,12 @@ project_menu() {
         SMART_MENU_PROJECT_DIR="${project_paths[$choice]}"
         local proj_key
         proj_key=$(basename "${project_paths[$choice]}" | tr '[:upper:]' '[:lower:]')
-        if [[ -n "${KNOWN_PROJECT_LAYOUTS[$proj_key]}" ]]; then
-            SMART_MENU_LAYOUT="${KNOWN_PROJECT_LAYOUTS[$proj_key]}"
+        if [[ -n "${_SM_KNOWN_LAYOUTS[$proj_key]}" ]]; then
+            SMART_MENU_LAYOUT="${_SM_KNOWN_LAYOUTS[$proj_key]}"
         else
             SMART_MENU_LAYOUT="generic-project"
         fi
-        editor_picker
+        _sm_editor_picker
         SMART_MENU_ACTION="project"
 
     elif [[ $choice -eq $num_recent ]]; then
@@ -169,79 +158,79 @@ project_menu() {
             SMART_MENU_PROJECT_DIR="${selected_project/#\~\//$HOME/}"
             local proj_key
             proj_key=$(basename "$SMART_MENU_PROJECT_DIR" | tr '[:upper:]' '[:lower:]')
-            if [[ -n "${KNOWN_PROJECT_LAYOUTS[$proj_key]}" ]]; then
-                SMART_MENU_LAYOUT="${KNOWN_PROJECT_LAYOUTS[$proj_key]}"
+            if [[ -n "${_SM_KNOWN_LAYOUTS[$proj_key]}" ]]; then
+                SMART_MENU_LAYOUT="${_SM_KNOWN_LAYOUTS[$proj_key]}"
             else
                 SMART_MENU_LAYOUT="generic-project"
             fi
-            editor_picker
+            _sm_editor_picker
             SMART_MENU_ACTION="project"
         else
-            project_menu
+            _sm_project_menu
         fi
 
     elif [[ $choice -eq $((num_recent + 1)) ]]; then
         local default_dev="${SMART_MENU_DEV_DIRS[0]:-$HOME/dev}"
         local new_opts=("Create empty project locally" "Clone from remote repository" "< Cancel")
-        run_menu "How do you want to start?" "${new_opts[@]}"
+        _sm_run_menu "How do you want to start?" "${new_opts[@]}"
         local new_choice=$?
 
         if [[ $new_choice -eq 0 ]]; then
-            echo -e "${BOLD_YELLOW}Enter new project name (in ${default_dev}):${RESET}"
+            echo -e "${SB_BOLD_YELLOW}Enter new project name (in ${default_dev}):${SB_RESET}"
             read -r proj_name
             if [[ -n "$proj_name" ]]; then
                 local new_dir="${default_dev}/$proj_name"
                 mkdir -p "$new_dir"
                 SMART_MENU_PROJECT_DIR="$new_dir"
                 SMART_MENU_LAYOUT="generic-project"
-                editor_picker
+                _sm_editor_picker
                 SMART_MENU_ACTION="project"
             else
-                project_menu
+                _sm_project_menu
             fi
         elif [[ $new_choice -eq 1 ]]; then
-            echo -e "${BOLD_YELLOW}Enter Git repository URL to clone:${RESET}"
+            echo -e "${SB_BOLD_YELLOW}Enter Git repository URL to clone:${SB_RESET}"
             read -r repo_url
             if [[ -n "$repo_url" ]]; then
                 local proj_name
                 proj_name=$(basename "$repo_url" .git)
                 local new_dir="${default_dev}/$proj_name"
-                echo -e "${BOLD_CYAN}Cloning into $new_dir...${RESET}"
+                echo -e "${SB_BOLD_CYAN}Cloning into $new_dir...${SB_RESET}"
                 git clone "$repo_url" "$new_dir"
                 if [[ $? -eq 0 ]]; then
                     SMART_MENU_PROJECT_DIR="$new_dir"
                     SMART_MENU_LAYOUT="generic-project"
-                    editor_picker
+                    _sm_editor_picker
                     SMART_MENU_ACTION="project"
                 else
-                    echo -e "${BOLD_RED}Clone failed.${RESET}"
+                    echo -e "${SB_BOLD_RED}Clone failed.${SB_RESET}"
                     read -r -p "Press any key to continue..." -n 1
-                    project_menu
+                    _sm_project_menu
                 fi
             else
-                project_menu
+                _sm_project_menu
             fi
         else
-            main_menu
+            _sm_main_menu
         fi
     else
-        main_menu
+        _sm_main_menu
     fi
 }
 
 # ─── SSH picker ───────────────────────────────────────────────────────────────
-quick_ssh() {
+_sm_quick_ssh() {
     local ssh_config="$HOME/.ssh/config"
     local hosts=""
     if [[ -f "$ssh_config" ]]; then
-        hosts=$(grep -i '^Host ' "$ssh_config" | awk '{print $2}' | grep -v '*')
+        hosts=$(grep -i '^Host ' "$ssh_config" | awk '{print $2}' | grep -vF '*')
     fi
 
     local selected_host
     if [[ -n "$hosts" ]]; then
         selected_host=$(echo "$hosts" | fzf --prompt="🔌 Select SSH Host: " --height=40% --layout=reverse --border=rounded)
     else
-        echo -e "${BOLD_YELLOW}No hosts found in ~/.ssh/config.${RESET}"
+        echo -e "${SB_BOLD_YELLOW}No hosts found in ~/.ssh/config.${SB_RESET}"
         read -e -p $'\e[1;36m❯ Enter SSH destination (user@host): \e[0m' selected_host
     fi
 
@@ -249,12 +238,12 @@ quick_ssh() {
         export SMART_MENU_ACTION="ssh"
         export SMART_MENU_SSH_HOST="$selected_host"
     else
-        main_menu
+        _sm_main_menu
     fi
 }
 
 # ─── Main menu ────────────────────────────────────────────────────────────────
-main_menu() {
+_sm_main_menu() {
     local options=(
         "  Casual Browsing"
         "  Projects"
@@ -263,20 +252,20 @@ main_menu() {
         "  Quick SSH"
         "  System Maintenance"
     )
-    run_menu "Choose your mission, Boss:" "${options[@]}"
+    _sm_run_menu "Choose your mission, Boss:" "${options[@]}"
     local choice=$?
 
     case $choice in
         0) SMART_MENU_ACTION="browse" ;;
-        1) project_menu ;;
+        1) _sm_project_menu ;;
         2) SMART_MENU_ACTION="zellij" ;;
         3) SMART_MENU_ACTION="bash" ;;
-        4) quick_ssh ;;
+        4) _sm_quick_ssh ;;
         5) SMART_MENU_ACTION="maintenance" ;;
     esac
 }
 
 # ─── Entry point ─────────────────────────────────────────────────────────────
 if [[ $- == *i* ]]; then
-    main_menu
+    _sm_main_menu
 fi

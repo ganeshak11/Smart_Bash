@@ -1,13 +1,11 @@
 #!/bin/bash
 
+# shellcheck disable=SC1091
+source "$(builtin cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
 # Cheat Sheet Manager using fzf
 
 CHEAT_FILE="$HOME/.smart_cheats.tsv"
-
-BOLD_CYAN='\033[1;36m'
-BOLD_GREEN='\033[1;32m'
-BOLD_YELLOW='\033[1;33m'
-RESET='\033[0m'
 
 if [[ ! -f "$CHEAT_FILE" ]]; then
     echo -e "Description\tCommand" > "$CHEAT_FILE"
@@ -23,15 +21,15 @@ _copy_to_clipboard() {
     elif command -v xsel &> /dev/null; then
         echo -n "$text" | xsel --clipboard --input
     else
-        echo -e "${BOLD_YELLOW}⚠️  No clipboard manager found (wl-copy, xclip, xsel).${RESET}"
+        echo -e "${SB_BOLD_YELLOW}⚠️  No clipboard manager found (wl-copy, xclip, xsel).${SB_RESET}"
         return 1
     fi
-    echo -e "${BOLD_GREEN}✅ Copied to clipboard: ${RESET}$text"
+    echo -e "${SB_BOLD_GREEN}✅ Copied to clipboard: ${SB_RESET}$text"
 }
 
 _cheat_menu() {
     while true; do
-        local choice=$(printf "🔍  Search Cheats\n➕  Add Cheat\n❌  Exit" | \
+        local choice; choice=$(printf "🔍  Search Cheats\n➕  Add Cheat\n❌  Exit" | \
             fzf --prompt="Cheat Sheet > " \
                 --height=30% \
                 --border=rounded \
@@ -51,7 +49,7 @@ _cheat_menu() {
                         --color="prompt:cyan,pointer:yellow,hl:green,border:cyan")
                 
                 if [[ -n "$selected" ]]; then
-                    local cmd=$(echo "$selected" | awk -F'\t' '{print $2}')
+                    local cmd; cmd=$(echo "$selected" | awk -F'\t' '{print $2}')
                     _copy_to_clipboard "$cmd"
                     return
                 fi
@@ -61,7 +59,7 @@ _cheat_menu() {
                 read -r -p $'\e[1;36m❯ Command: \e[0m' cmd
                 if [[ -n "$desc" && -n "$cmd" ]]; then
                     echo -e "${desc}\t${cmd}" >> "$CHEAT_FILE"
-                    echo -e "${BOLD_GREEN}✅ Added to cheat sheet.${RESET}"
+                    echo -e "${SB_BOLD_GREEN}✅ Added to cheat sheet.${SB_RESET}"
                 fi
                 ;;
             *"Exit"*|"") return ;;

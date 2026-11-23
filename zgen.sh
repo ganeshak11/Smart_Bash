@@ -1,13 +1,11 @@
 #!/bin/bash
 # Zellij Layout Generator
 
+# shellcheck disable=SC1091
+source "$(builtin cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
 LAYOUT_DIR="$HOME/.config/zellij/layouts"
 mkdir -p "$LAYOUT_DIR"
-
-BOLD_CYAN='\033[1;36m'
-BOLD_GREEN='\033[1;32m'
-BOLD_YELLOW='\033[1;33m'
-RESET='\033[0m'
 
 read -r -p $'\e[1;36m❯ Enter a name for this layout: \e[0m' layout_name
 [[ -z "$layout_name" ]] && exit 1
@@ -27,7 +25,7 @@ echo "            plugin location=\"zellij:status-bar\"" >> "$layout_file"
 echo "        }" >> "$layout_file"
 echo "    }" >> "$layout_file"
 
-echo -e "\n${BOLD_CYAN}Configure Panes:${RESET}"
+echo -e "\n${SB_BOLD_CYAN}Configure Panes:${SB_RESET}"
 
 num_panes=$(printf "1\n2\n3\n4" | fzf --prompt="How many panes? > " --height=20% --border=rounded)
 [[ -z "$num_panes" ]] && exit 1
@@ -66,7 +64,7 @@ fi
 echo "    }" >> "$layout_file"
 echo "}" >> "$layout_file"
 
-echo -e "${BOLD_GREEN}✅ Layout saved to $layout_file${RESET}"
+echo -e "${SB_BOLD_GREEN}✅ Layout saved to $layout_file${SB_RESET}"
 read -r -p $'\e[1;33m❯ Launch it now? [y/N]: \e[0m' launch
 if [[ "$launch" =~ ^[Yy]$ ]]; then
     zellij --layout "$layout_file"

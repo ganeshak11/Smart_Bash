@@ -4,29 +4,21 @@
 # ║  Context-aware: Compose stacks or global containers via fzf  ║
 # ╚══════════════════════════════════════════════════════════════╝
 
-# Colors
-BOLD_CYAN='\033[1;36m'
-BOLD_GREEN='\033[1;32m'
-BOLD_YELLOW='\033[1;33m'
-BOLD_RED='\033[1;31m'
-BOLD_MAGENTA='\033[1;35m'
-BOLD_WHITE='\033[1;37m'
-CYAN='\033[0;36m'
-DIM='\033[2m'
-RESET='\033[0m'
+# shellcheck disable=SC1091
+source "$(builtin cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
 # ── Dependency check ───────────────────────────────────────────────────────────
 _dops_check_deps() {
     if ! command -v docker &>/dev/null; then
-        echo -e "${BOLD_RED}❌ Docker is not installed or not in PATH.${RESET}"
+        echo -e "${SB_BOLD_RED}❌ Docker is not installed or not in PATH.${SB_RESET}"
         return 1
     fi
     if ! docker info &>/dev/null; then
-        echo -e "${BOLD_RED}❌ Docker daemon is not running. Start it with: sudo systemctl start docker${RESET}"
+        echo -e "${SB_BOLD_RED}❌ Docker daemon is not running. Start it with: sudo systemctl start docker${SB_RESET}"
         return 1
     fi
     if ! command -v fzf &>/dev/null; then
-        echo -e "${BOLD_RED}❌ fzf is required but not installed. Install with: sudo apt install fzf${RESET}"
+        echo -e "${SB_BOLD_RED}❌ fzf is required but not installed. Install it with your package manager (apt/dnf/pacman/brew install fzf)${SB_RESET}"
         return 1
     fi
     return 0
@@ -61,16 +53,16 @@ _dops_menu() {
 # ── Inspect a container ────────────────────────────────────────────────────────
 _dops_inspect() {
     local cname="$1"
-    echo -e "\n${BOLD_CYAN}── Container Info: $cname ──${RESET}"
-    echo -e "${BOLD_WHITE}🔌 Ports:${RESET}"
+    echo -e "\n${SB_BOLD_CYAN}── Container Info: $cname ──${SB_RESET}"
+    echo -e "${SB_BOLD_WHITE}🔌 Ports:${SB_RESET}"
     docker port "$cname" 2>/dev/null || echo "   (none)"
-    echo -e "\n${BOLD_WHITE}🌐 Networks & IPs:${RESET}"
+    echo -e "\n${SB_BOLD_WHITE}🌐 Networks & IPs:${SB_RESET}"
     docker inspect "$cname" --format \
         '{{range $net, $cfg := .NetworkSettings.Networks}}  {{$net}}: {{$cfg.IPAddress}}{{println}}{{end}}' 2>/dev/null
-    echo -e "${BOLD_WHITE}📁 Volumes:${RESET}"
+    echo -e "${SB_BOLD_WHITE}📁 Volumes:${SB_RESET}"
     docker inspect "$cname" --format \
         '{{range .Mounts}}  {{.Source}} → {{.Destination}} ({{.Type}}){{println}}{{end}}' 2>/dev/null | head -10
-    echo -e "${BOLD_WHITE}📊 Resource Usage:${RESET}"
+    echo -e "${SB_BOLD_WHITE}📊 Resource Usage:${SB_RESET}"
     docker stats "$cname" --no-stream --format \
         "  CPU: {{.CPUPerc}}   MEM: {{.MemUsage}}   NET: {{.NetIO}}" 2>/dev/null
     echo ""
@@ -80,7 +72,7 @@ _dops_inspect() {
 _dops_exec() {
     local cname="$1"
 
-    echo -e "${BOLD_GREEN}🐚 Dropping into shell inside '$cname'...${RESET}"
+    echo -e "${SB_BOLD_GREEN}🐚 Dropping into shell inside '$cname'...${SB_RESET}"
 
     # Check for bash first
     if docker exec "$cname" sh -c "command -v bash" >/dev/null 2>&1; then
@@ -90,12 +82,12 @@ _dops_exec() {
 
     # Fallback to sh
     if docker exec "$cname" sh -c "command -v sh" >/dev/null 2>&1; then
-        echo -e "${DIM}bash not found, falling back to sh...${RESET}"
+        echo -e "${SB_DIM}bash not found, falling back to sh...${SB_RESET}"
         docker exec -it "$cname" sh
         return
     fi
 
-    echo -e "${BOLD_RED}❌ No usable shell found inside container.${RESET}"
+    echo -e "${SB_BOLD_RED}❌ No usable shell found inside container.${SB_RESET}"
 }
 
 # ── Individual container action menu ──────────────────────────────────────────
@@ -104,7 +96,7 @@ _dops_container_actions() {
     local cimage="$2"
 
     while true; do
-        echo -e "\n${BOLD_CYAN}🐳 Selected: ${BOLD_WHITE}$cname ${DIM}($cimage)${RESET}"
+        echo -e "\n${SB_BOLD_CYAN}🐳 Selected: ${SB_BOLD_WHITE}$cname ${SB_DIM}($cimage)${SB_RESET}"
         local action
         action=$(_dops_menu "Action for $cname" \
             "🪵  Tail Logs" \
@@ -120,19 +112,19 @@ _dops_container_actions() {
 
         case "$action" in
             *"Tail Logs"*)
-                echo -e "${BOLD_GREEN}🪵 Streaming logs for '$cname' (Ctrl+C to stop)...${RESET}"
+                echo -e "${SB_BOLD_GREEN}🪵 Streaming logs for '$cname' (Ctrl+C to stop)...${SB_RESET}"
                 docker logs -f --tail 100 "$cname"
                 ;;
             *"Exec Shell"*)
                 _dops_exec "$cname"
                 ;;
             *"Restart"*)
-                echo -e "${BOLD_YELLOW}🔄 Restarting '$cname'...${RESET}"
-                docker restart "$cname" && echo -e "${BOLD_GREEN}✅ Restarted.${RESET}"
+                echo -e "${SB_BOLD_YELLOW}🔄 Restarting '$cname'...${SB_RESET}"
+                docker restart "$cname" && echo -e "${SB_BOLD_GREEN}✅ Restarted.${SB_RESET}"
                 ;;
             *"Stop"*)
-                echo -e "${BOLD_YELLOW}🛑 Stopping '$cname'...${RESET}"
-                docker stop "$cname" && echo -e "${BOLD_GREEN}✅ Stopped.${RESET}"
+                echo -e "${SB_BOLD_YELLOW}🛑 Stopping '$cname'...${SB_RESET}"
+                docker stop "$cname" && echo -e "${SB_BOLD_GREEN}✅ Stopped.${SB_RESET}"
                 return
                 ;;
             *"Copy File"*)
@@ -143,14 +135,14 @@ _dops_container_actions() {
                         read -e -p $'\e[1;36m❯ Host file/dir path: \e[0m' hpath
                         read -p $'\e[1;36m❯ Container dest path: \e[0m' cpath
                         if [[ -n "$hpath" && -n "$cpath" ]]; then
-                            docker cp "$hpath" "$cname:$cpath" && echo -e "${BOLD_GREEN}✅ Copied to container.${RESET}"
+                            docker cp "$hpath" "$cname:$cpath" && echo -e "${SB_BOLD_GREEN}✅ Copied to container.${SB_RESET}"
                         fi
                         ;;
                     *"Container ➔ Host"*)
                         read -p $'\e[1;36m❯ Container file/dir path: \e[0m' cpath
                         read -e -p $'\e[1;36m❯ Host dest path: \e[0m' hpath
                         if [[ -n "$hpath" && -n "$cpath" ]]; then
-                            docker cp "$cname:$cpath" "$hpath" && echo -e "${BOLD_GREEN}✅ Copied to host.${RESET}"
+                            docker cp "$cname:$cpath" "$hpath" && echo -e "${SB_BOLD_GREEN}✅ Copied to host.${SB_RESET}"
                         fi
                         ;;
                 esac
@@ -162,7 +154,10 @@ _dops_container_actions() {
                 return
                 ;;
             *"Exit"*)
-                exit 0
+                # dops is sourced into the interactive shell: never `exit` here,
+                # it would close the terminal. Flag a quit and unwind instead.
+                _DOPS_QUIT=1
+                return
                 ;;
         esac
     done
@@ -175,11 +170,11 @@ _dops_global() {
         running=$(docker ps --format "{{.ID}}|{{.Names}}|{{.Image}}|{{.Status}}" 2>/dev/null)
 
         if [[ -z "$running" ]]; then
-            echo -e "${BOLD_YELLOW}⚠️  No running containers found.${RESET}"
+            echo -e "${SB_BOLD_YELLOW}⚠️  No running containers found.${SB_RESET}"
             return
         fi
 
-        echo -e "\n${BOLD_CYAN}🐳 Running Containers (select to manage):${RESET}"
+        echo -e "\n${SB_BOLD_CYAN}🐳 Running Containers (select to manage):${SB_RESET}"
         # Pre-calculate a safe script for preview to avoid quote hell
         local preview_cmd='
             echo -e "\033[1;36m--- Live Stats ---\033[0m"
@@ -187,6 +182,7 @@ _dops_global() {
             echo -e "\n\033[1;36m--- Recent Logs ---\033[0m"
             docker logs --tail 15 {1} 2>&1
         '
+        local selected
         selected=$(echo "$running" | awk -F'|' '{printf "%-14s  %-28s  %-28s  %s\n", $1, $2, $3, $4}' | \
             fzf \
                 --prompt="Select container > " \
@@ -209,6 +205,7 @@ _dops_global() {
         cimage=$(docker inspect "$cid" --format '{{.Config.Image}}' 2>/dev/null)
 
         _dops_container_actions "$cname" "$cimage"
+        [[ "$_DOPS_QUIT" == 1 ]] && return
     done
 }
 
@@ -230,18 +227,18 @@ _dops_compose() {
     project_name=$(basename "$(pwd)" | tr '[:upper:]' '[:lower:]')
 
     while true; do
-        echo -e "\n${BOLD_MAGENTA}🗂️  Compose Stack: ${BOLD_WHITE}$(basename "$(pwd)")${RESET}"
-        echo -e "${DIM}File: $compose_file${RESET}\n"
+        echo -e "\n${SB_BOLD_MAGENTA}🗂️  Compose Stack: ${SB_BOLD_WHITE}$(basename "$(pwd)")${SB_RESET}"
+        echo -e "${SB_DIM}File: $compose_file${SB_RESET}\n"
 
         # Show running services from this stack
         local services
         services=$(docker ps --filter "label=com.docker.compose.project=$project_name" \
             --format "  {{.Names}} ({{.Status}})" 2>/dev/null)
         if [[ -n "$services" ]]; then
-            echo -e "${BOLD_GREEN}● Running Services:${RESET}"
+            echo -e "${SB_BOLD_GREEN}● Running Services:${SB_RESET}"
             echo -e "$services"
         else
-            echo -e "${BOLD_YELLOW}● No services currently running from this stack.${RESET}"
+            echo -e "${SB_BOLD_YELLOW}● No services currently running from this stack.${SB_RESET}"
         fi
 
         echo ""
@@ -262,43 +259,43 @@ _dops_compose() {
 
         case "$action" in
             *"Tail All Logs"*)
-                echo -e "${BOLD_GREEN}🪵 Streaming all logs (Ctrl+C to stop)...${RESET}"
+                echo -e "${SB_BOLD_GREEN}🪵 Streaming all logs (Ctrl+C to stop)...${SB_RESET}"
                 $compose_cmd logs -f --tail=50
                 ;;
             *"Tail Specific Service"*)
                 local svc_list
                 svc_list=$($compose_cmd config --services 2>/dev/null)
                 if [[ -z "$svc_list" ]]; then
-                    echo -e "${BOLD_RED}❌ Could not read services from compose file.${RESET}"
+                    echo -e "${SB_BOLD_RED}❌ Could not read services from compose file.${SB_RESET}"
                 else
                     local chosen_svc
                     chosen_svc=$(echo "$svc_list" | _dops_menu "Pick a service")
                     if [[ -n "$chosen_svc" ]]; then
-                        echo -e "${BOLD_GREEN}🪵 Streaming logs for '$chosen_svc' (Ctrl+C to stop)...${RESET}"
+                        echo -e "${SB_BOLD_GREEN}🪵 Streaming logs for '$chosen_svc' (Ctrl+C to stop)...${SB_RESET}"
                         $compose_cmd logs -f --tail=100 "$chosen_svc"
                     fi
                 fi
                 ;;
             *"Up"*)
-                echo -e "${BOLD_GREEN}⬆️  Building & starting stack...${RESET}"
+                echo -e "${SB_BOLD_GREEN}⬆️  Building & starting stack...${SB_RESET}"
                 $compose_cmd up -d --build
                 ;;
             *"Restart All"*)
-                echo -e "${BOLD_YELLOW}🔄 Restarting all services...${RESET}"
-                $compose_cmd restart && echo -e "${BOLD_GREEN}✅ All services restarted.${RESET}"
+                echo -e "${SB_BOLD_YELLOW}🔄 Restarting all services...${SB_RESET}"
+                $compose_cmd restart && echo -e "${SB_BOLD_GREEN}✅ All services restarted.${SB_RESET}"
                 ;;
             *"Stop All"*)
-                echo -e "${BOLD_YELLOW}🛑 Stopping all services...${RESET}"
-                $compose_cmd stop && echo -e "${BOLD_GREEN}✅ Stack stopped.${RESET}"
+                echo -e "${SB_BOLD_YELLOW}🛑 Stopping all services...${SB_RESET}"
+                $compose_cmd stop && echo -e "${SB_BOLD_GREEN}✅ Stack stopped.${SB_RESET}"
                 ;;
             *"Down"*)
-                echo -e "${BOLD_RED}⬇️  Tearing down stack (containers + networks)...${RESET}"
+                echo -e "${SB_BOLD_RED}⬇️  Tearing down stack (containers + networks)...${SB_RESET}"
                 read -r -p $'\e[1;35m❯ Are you sure? [y/N]: \e[0m' confirm
                 if [[ "$confirm" =~ ^[Yy]$ ]]; then
-                    $compose_cmd down && echo -e "${BOLD_GREEN}✅ Stack removed.${RESET}"
+                    $compose_cmd down && echo -e "${SB_BOLD_GREEN}✅ Stack removed.${SB_RESET}"
                     return
                 else
-                    echo -e "${DIM}Cancelled.${RESET}"
+                    echo -e "${SB_DIM}Cancelled.${SB_RESET}"
                 fi
                 ;;
             *"Exec"*)
@@ -312,7 +309,7 @@ _dops_compose() {
                         --format '{{index .Labels "com.docker.compose.service"}}' 2>/dev/null | sort -u)
                 fi
                 if [[ -z "$svc_list" ]]; then
-                    echo -e "${BOLD_RED}❌ No running services found for this stack.${RESET}"
+                    echo -e "${SB_BOLD_RED}❌ No running services found for this stack.${SB_RESET}"
                 else
                     local chosen_svc
                     chosen_svc=$(echo "$svc_list" | _dops_menu "Pick a service to exec into")
@@ -325,18 +322,19 @@ _dops_compose() {
                         if [[ -n "$cname" ]]; then
                             _dops_exec "$cname"
                         else
-                            echo -e "${BOLD_RED}❌ Service '$chosen_svc' is not running.${RESET}"
+                            echo -e "${SB_BOLD_RED}❌ Service '$chosen_svc' is not running.${SB_RESET}"
                         fi
                     fi
                 fi
                 ;;
             *"Show Service Status"*)
-                echo -e "\n${BOLD_CYAN}── Stack Status ──${RESET}"
+                echo -e "\n${SB_BOLD_CYAN}── Stack Status ──${SB_RESET}"
                 $compose_cmd ps
                 echo ""
                 ;;
             *"Manage Individual"*)
                 _dops_global
+                [[ "$_DOPS_QUIT" == 1 ]] && return
                 ;;
             *"Exit"*)
                 return
@@ -348,7 +346,7 @@ _dops_compose() {
 # ── Image and Volume Management ────────────────────────────────────────────────
 _dops_images_and_volumes() {
     while true; do
-        echo -e "\n${BOLD_CYAN}📦 Manage Images & Volumes${RESET}"
+        echo -e "\n${SB_BOLD_CYAN}📦 Manage Images & Volumes${SB_RESET}"
         local choice
         choice=$(_dops_menu "Select operation" \
             "🖼️  Manage Images" \
@@ -370,10 +368,10 @@ _dops_images_and_volumes() {
                 _dops_hub_search
                 ;;
             *"System Prune"*)
-                echo -e "${BOLD_RED}⚠️  This will remove all unused containers, networks, images (both dangling and unreferenced), and optionally, volumes.${RESET}"
+                echo -e "${SB_BOLD_RED}⚠️  This will remove all unused containers, networks, images (both dangling and unreferenced), and optionally, volumes.${SB_RESET}"
                 read -r -p $'\e[1;33m❯ Proceed with system prune? [y/N]: \e[0m' confirm
                 if [[ "$confirm" =~ ^[Yy]$ ]]; then
-                    docker system prune -a && echo -e "${BOLD_GREEN}✅ Pruned.${RESET}"
+                    docker system prune -a && echo -e "${SB_BOLD_GREEN}✅ Pruned.${SB_RESET}"
                 fi
                 ;;
             *"Back"*)
@@ -388,11 +386,11 @@ _dops_images() {
         local images
         images=$(docker images --format "{{.ID}}|{{.Repository}}|{{.Tag}}|{{.Size}}" 2>/dev/null)
         if [[ -z "$images" ]]; then
-            echo -e "${BOLD_YELLOW}⚠️  No images found.${RESET}"
+            echo -e "${SB_BOLD_YELLOW}⚠️  No images found.${SB_RESET}"
             return
         fi
 
-        echo -e "\n${BOLD_CYAN}🖼️  Docker Images:${RESET}"
+        echo -e "\n${SB_BOLD_CYAN}🖼️  Docker Images:${SB_RESET}"
         local selected
         selected=$(echo "$images" | awk -F'|' '{printf "%-14s  %-40s  %-15s  %s\n", $1, $2, $3, $4}' | \
             fzf --prompt="Select image > " \
@@ -414,11 +412,11 @@ _dops_images() {
         )
         case "$action" in
             *"Remove Image"*)
-                docker rmi "$iid" && echo -e "${BOLD_GREEN}✅ Removed $iid.${RESET}"
+                docker rmi "$iid" && echo -e "${SB_BOLD_GREEN}✅ Removed $iid.${SB_RESET}"
                 read -r -n 1 -s
                 ;;
             *"Force Remove"*)
-                docker rmi -f "$iid" && echo -e "${BOLD_GREEN}✅ Force removed $iid.${RESET}"
+                docker rmi -f "$iid" && echo -e "${SB_BOLD_GREEN}✅ Force removed $iid.${SB_RESET}"
                 read -r -n 1 -s
                 ;;
         esac
@@ -430,11 +428,11 @@ _dops_volumes() {
         local volumes
         volumes=$(docker volume ls --format "{{.Name}}|{{.Driver}}" 2>/dev/null)
         if [[ -z "$volumes" ]]; then
-            echo -e "${BOLD_YELLOW}⚠️  No volumes found.${RESET}"
+            echo -e "${SB_BOLD_YELLOW}⚠️  No volumes found.${SB_RESET}"
             return
         fi
 
-        echo -e "\n${BOLD_CYAN}💾  Docker Volumes:${RESET}"
+        echo -e "\n${SB_BOLD_CYAN}💾  Docker Volumes:${SB_RESET}"
         local selected
         selected=$(echo "$volumes" | awk -F'|' '{printf "%-50s  %s\n", $1, $2}' | \
             fzf --prompt="Select volume > " \
@@ -460,7 +458,7 @@ _dops_volumes() {
                 read -r -n 1 -s -p "Press any key to continue..."
                 ;;
             *"Remove Volume"*)
-                docker volume rm "$vname" && echo -e "${BOLD_GREEN}✅ Removed $vname.${RESET}"
+                docker volume rm "$vname" && echo -e "${SB_BOLD_GREEN}✅ Removed $vname.${SB_RESET}"
                 read -r -n 1 -s
                 ;;
         esac
@@ -468,11 +466,11 @@ _dops_volumes() {
 }
 
 _dops_hub_search() {
-    echo -e "${BOLD_CYAN}🔍 Search Docker Hub${RESET}"
+    echo -e "${SB_BOLD_CYAN}🔍 Search Docker Hub${SB_RESET}"
     read -r -p $'\e[1;36m❯ Enter search term: \e[0m' query
     [[ -z "$query" ]] && return
 
-    echo -e "${DIM}Searching for '$query'...${RESET}"
+    echo -e "${SB_DIM}Searching for '$query'...${SB_RESET}"
     local selected
     selected=$(docker search "$query" | \
         fzf --prompt="Select image to pull > " \
@@ -484,7 +482,7 @@ _dops_hub_search() {
 
     local iname
     iname=$(echo "$selected" | awk '{print $1}')
-    echo -e "${BOLD_GREEN}⬇️  Pulling $iname...${RESET}"
+    echo -e "${SB_BOLD_GREEN}⬇️  Pulling $iname...${SB_RESET}"
     docker pull "$iname"
     read -r -n 1 -s -p "Press any key to continue..."
 }
@@ -492,6 +490,7 @@ _dops_hub_search() {
 # ── Main Entry Point ───────────────────────────────────────────────────────────
 dops() {
     _dops_check_deps || return 1
+    _DOPS_QUIT=0
 
     # Look for compose file in current directory
     local compose_file=""
@@ -504,7 +503,7 @@ dops() {
 
     local choice
     if [[ -n "$compose_file" ]]; then
-        echo -e "\n${BOLD_MAGENTA}🐳 Docker Compose stack detected!${RESET} ${DIM}($compose_file)${RESET}"
+        echo -e "\n${SB_BOLD_MAGENTA}🐳 Docker Compose stack detected!${SB_RESET} ${SB_DIM}($compose_file)${SB_RESET}"
         choice=$(_dops_menu "What do you want to manage?" \
             "🗂️  Manage Compose Stack (logs, restart, up, down, exec)" \
             "🌍  Manage Individual Containers (all running containers)" \

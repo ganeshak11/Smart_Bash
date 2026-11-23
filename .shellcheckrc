@@ -1,0 +1,7 @@
+# Smart Bash scripts are bash-only and source each other at runtime.
+shell=bash
+external-sources=true
+# SC1090/SC1091: dynamic `source` paths (lib.sh, ~/.secrets, ...)
+# SC2088: "~/..." appears in user-facing messages on purpose
+# SC2034: colour variables defined in lib.sh are used by other files
+disable=SC1090,SC1091,SC2034,SC2088

@@ -13,7 +13,8 @@
 
 ![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)
 ![Shell](https://img.shields.io/badge/shell-bash-green?style=flat-square)
-![Platform](https://img.shields.io/badge/platform-Ubuntu%20%2F%20Debian-orange?style=flat-square)
+![Platform](https://img.shields.io/badge/platform-Debian%20%7C%20Fedora%20%7C%20Arch%20%7C%20openSUSE-orange?style=flat-square)
+![shellcheck](https://github.com/ganeshak11/Smart_Bash/actions/workflows/shellcheck.yml/badge.svg)
 
 </div>
 
@@ -30,6 +31,9 @@
 | ⚡ **Fuzzy Everything** | `fzf` for history (Ctrl+R), files (Ctrl+T), and directories (Alt+C). |
 | 🧭 **Zoxide Smart Jumps** | `z projectname` teleports to your most-visited directories. |
 | 📦 **Auto-Installer** | Type a missing command → asked to install it on the spot. |
+| 🔄 **`sb update`** | Your `~/.bashrc` just *sources* the repo — one `git pull` and you are on the latest version. |
+| 🩺 **`sb doctor`** | Checks dependencies, install state, startup time and stray ssh-agents. |
+| 🚀 **Fast startup** | IP, weather, Docker and update info are cached and refreshed in the background — no network waits. |
 | 🛡️ **Secrets Protection** | API keys live in `~/.secrets`, never in `~/.bashrc`. |
 | 🌟 **Dracula Theme** | `bat`, `fzf`, and `man` pages all styled with the Dracula theme. |
 | ⏱️ **Countdown Timer** | `countdown 30` — visual progress bar with color shifts. |
@@ -46,24 +50,35 @@ git clone https://github.com/ganeshak11/Smart_Bash.git ~/Smart_Bash && bash ~/Sm
 ```
 
 The installer will:
-1. ✅ Back up your existing `~/.bashrc`
-2. ✅ Auto-install all dependencies (`lsd`, `bat`, `fzf`, `ripgrep`, `zoxide`, `zellij`, etc.)
-3. ✅ Install the Smart Bash config
-4. ✅ Set up your `~/.secrets` file
+1. ✅ Install dependencies with **apt, dnf, pacman, zypper or brew** (`lsd`, `bat`, `fzf`, `ripgrep`, `zoxide`, `jq`, `zellij`, …)
+2. ✅ Back up your existing `~/.bashrc`
+3. ✅ Replace it with a tiny stub that **sources** `~/Smart_Bash/bashrc.sh` — nothing is copied
+4. ✅ Create `~/.bashrc.local` for your own aliases, and `~/.secrets` for API keys
+
+Already have the dependencies? `bash install.sh --no-deps`
+
+### How the config is laid out
+
+| File | What it is | Who edits it |
+|---|---|---|
+| `~/.bashrc` | 5-line stub that sources Smart Bash | nobody |
+| `~/Smart_Bash/bashrc.sh` | the Smart Bash config | updated by `sb update` |
+| `~/.bashrc.local` | your aliases, paths, extra tools — loaded last, so it wins | **you** |
+| `~/.secrets` | API keys (`chmod 600`) | **you** |
+| `~/.smart_menu.conf` | where your projects live, which editors to offer | **you** |
 
 ---
 
-## 🛠️ Manual Install
+## 🧰 The `sb` command
 
 ```bash
-# 1. Clone the repo
-git clone https://github.com/ganeshak11/Smart_Bash.git ~/Smart_Bash
-
-# 2. Back up your existing config
-cp ~/.bashrc ~/.bashrc.backup
-
-# 3. Install
-bash ~/Smart_Bash/install.sh
+sb help            # every command and alias
+sb update          # git pull + reload
+sb doctor          # dependencies, install state, startup time, ssh-agents
+sb off menu        # stop the startup menu   (sb on menu to bring it back)
+sb off banner      # stop the startup banner
+sb cache clear     # refetch IP / weather / updates / docker stats
+sb uninstall       # restore your old ~/.bashrc
 ```
 
 ---
@@ -144,6 +159,11 @@ The installer handles all of these automatically. For reference:
 | `zoxide` | Smart cd | `apt install zoxide` |
 | `zellij` | Terminal multiplexer | Auto-downloaded from GitHub |
 | `nmap` | Network scanner | `apt install nmap` |
+| `jq` | JSON for `ask` | `apt install jq` |
+
+Package names are the same on `dnf`, `pacman`, `zypper` and `brew`.
+Runtime is Linux-focused: the installer works with Homebrew, but parts of the
+banner and `scan` use Linux-only tools (`/proc`, `ip`).
 
 ---
 
@@ -164,16 +184,13 @@ The layout gives you:
 
 ## ↩️ Uninstall / Restore
 
-Your old `~/.bashrc` is automatically backed up before installation:
-
 ```bash
-# Find your backup (timestamped)
-ls ~/.bashrc.backup.*
-
-# Restore it
-cp ~/.bashrc.backup.YYYYMMDD_HHMMSS ~/.bashrc
-source ~/.bashrc
+sb uninstall
 ```
+
+It restores your newest pre-Smart-Bash backup (`~/.bashrc.backup.*`), and asks
+before removing the zellij layout, menu config and cache. Your `~/.bashrc.local`,
+`~/.secrets` and the repo itself are never deleted.
 
 ---
 

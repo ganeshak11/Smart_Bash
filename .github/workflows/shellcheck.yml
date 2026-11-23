@@ -1,0 +1,15 @@
+name: shellcheck
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax check
+        run: for f in *.sh; do bash -n "$f" || exit 1; done
+      - name: ShellCheck
+        run: shellcheck --version && shellcheck -S warning *.sh

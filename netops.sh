@@ -1,14 +1,11 @@
 #!/bin/bash
 # Network & Port Manager using fzf
 
-BOLD_CYAN='\033[1;36m'
-BOLD_GREEN='\033[1;32m'
-BOLD_YELLOW='\033[1;33m'
-BOLD_RED='\033[1;31m'
-RESET='\033[0m'
+# shellcheck disable=SC1091
+source "$(builtin cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
 while true; do
-    echo -e "${BOLD_CYAN}🌐 Network Connections & Listening Ports${RESET}"
+    echo -e "${SB_BOLD_CYAN}🌐 Network Connections & Listening Ports${SB_RESET}"
     
     selected=$(sudo ss -tulnp | tail -n +2 | \
         fzf --prompt="Select Port > " \
@@ -25,7 +22,7 @@ while true; do
     port=$(echo "$selected" | awk '{print $5}')
     
     if [[ -z "$pid" ]]; then
-        echo -e "${BOLD_YELLOW}⚠️  No PID found. You might need sudo privileges.${RESET}"
+        echo -e "${SB_BOLD_YELLOW}⚠️  No PID found. You might need sudo privileges.${SB_RESET}"
         read -r -n 1 -s
         continue
     fi
@@ -36,15 +33,15 @@ while true; do
     case "$action" in
         *"Inspect"*)
             clear
-            echo -e "${BOLD_CYAN}Process Tree for PID $pid:${RESET}"
+            echo -e "${SB_BOLD_CYAN}Process Tree for PID $pid:${SB_RESET}"
             pstree -p "$pid"
-            echo -e "\n${BOLD_CYAN}Detailed ps info:${RESET}"
+            echo -e "\n${SB_BOLD_CYAN}Detailed ps info:${SB_RESET}"
             ps -f -p "$pid"
             read -r -n 1 -s -p "Press any key to continue..."
             ;;
         *"Kill"*)
-            echo -e "${BOLD_RED}⚠️  Killing PID $pid...${RESET}"
-            sudo kill -9 "$pid" && echo -e "${BOLD_GREEN}✅ Process killed.${RESET}"
+            echo -e "${SB_BOLD_RED}⚠️  Killing PID $pid...${SB_RESET}"
+            sudo kill -9 "$pid" && echo -e "${SB_BOLD_GREEN}✅ Process killed.${SB_RESET}"
             read -r -n 1 -s
             ;;
     esac
